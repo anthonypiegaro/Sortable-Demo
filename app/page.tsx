@@ -1,6 +1,5 @@
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Exercises } from "./exercises";
-import { ExercisesCollapse } from "./exercises-collapse";
+import { Container } from "./container";
 
 export type Exercise = {
   id: string;
@@ -116,7 +115,7 @@ export default function Page() {
     <main className="w-screen h-screen">
       <ThemeToggle className="fixed right-4.75 top-4.75" />
       <h1 className="mx-auto text-center py-10 text-4xl font-semibold">Sortable</h1>
-      <ExercisesCollapse exercises={exercises} />
+      <Container exercises={exercises} />
     </main>
   )
 }

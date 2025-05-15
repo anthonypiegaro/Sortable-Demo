@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { RefObject, useLayoutEffect, useRef, useState } from "react"
 import { Grip } from "lucide-react";
 import { DndContext, DragEndEvent, DragStartEvent, useDndMonitor } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { Exercise } from "./page";
 
 export function ExercisesCollapse({ exercises }:{ exercises: Exercise[] }) {
+  const parentRef = useRef<HTMLDivElement | null>(null)
+
   const form = useForm({
     defaultValues: {
       exercises: exercises
@@ -35,23 +37,31 @@ export function ExercisesCollapse({ exercises }:{ exercises: Exercise[] }) {
 
       move(from, to)
     }
+
+    if (parentRef.current) {
+      parentRef.current.style.transform = "translateY(0px)"
+    }
   }
 
   return (
+    <div ref={parentRef} >
       <DndContext onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
         <SortableContext items={fields.map(field => field.id)} strategy={verticalListSortingStrategy}>
-          {fields.map(field => <SortableItem key={field.id} exercise={field} />)}
+          {fields.map(field => <SortableItem key={field.id} exercise={field} parentRef={parentRef} />)}
           <div className="h-10" />
         </SortableContext>
-    </DndContext>
+      </DndContext>
+    </div>
   )
 }
 
-function SortableItem({ exercise }: { exercise: Exercise }) {
+function SortableItem({ exercise, parentRef }: { exercise: Exercise, parentRef: RefObject<HTMLDivElement | null> }) {
   const [collapsed, setCollapsed] = useState(false)
+  const prevActiveItemHeight = useRef(0)
   const localRef = useRef<HTMLDivElement | null>(null);
 
   const {
+    active,
     attributes,
     listeners,
     setNodeRef,
@@ -64,9 +74,31 @@ function SortableItem({ exercise }: { exercise: Exercise }) {
     localRef.current = node
   }
 
+  useLayoutEffect(() => {
+    if (active?.id === exercise.id) {
+      const currentHeight = localRef.current?.getBoundingClientRect().top ?? 0
+      console.log("Top of the active list item just before render after Drag Start:", currentHeight)
+
+      console.log("Prev height of the active item:", prevActiveItemHeight.current)
+
+      const diff = prevActiveItemHeight.current - currentHeight
+      console.log("The difference in height:", diff)
+
+      if (parentRef.current !== null) {
+        parentRef.current.style.transform = `translateY(${diff}px)`
+      }
+    
+    }
+  }, [collapsed])
+
   useDndMonitor({
-    onDragStart() {
+    onDragStart(event: DragStartEvent) {
       setCollapsed(true)
+      if (event.active.id == exercise.id) {
+        const yPos = localRef.current?.getBoundingClientRect().top
+        console.log("Position of the top of active list item:", yPos)
+        prevActiveItemHeight.current = yPos ?? 0
+      }
     },
     onDragEnd() {
       setCollapsed(false)
@@ -87,7 +119,7 @@ function SortableItem({ exercise }: { exercise: Exercise }) {
         </CardTitle>
       </CardHeader>
       {!collapsed && (
-        <CardContent className={cn("h-96 overflow-hidden")}>
+        <CardContent>
           <p>{exercise.description}</p>
         </CardContent>
       )}
